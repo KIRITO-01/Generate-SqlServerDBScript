@@ -99,7 +99,7 @@ function GetScript {
         [Parameter(Mandatory = $false)]
         [bool]$ScriptSchema = $true,
         [Parameter(Mandatory = $false)]
-        [switch]$Triggers = $false,
+        [bool]$Triggers = $true,
         [Parameter(Mandatory = $false)]
         [switch]$ScriptData = $false,
         [Parameter(Mandatory = $false)]
@@ -194,7 +194,7 @@ function GetScript {
         $scriptoptions.IncludeDatabaseContext = $false
         $scriptoptions.NoXmlNamespaces = $false
         $scriptoptions.DriIncludeSystemNames = $false
-        $scriptoptions.OptimizerData = $false
+        $scriptoptions.OptimizerData = $true
         $scriptoptions.NoExecuteAs = $false
         $scriptoptions.EnforceScriptingOptions = $false
         $scriptoptions.NoMailProfileAccounts = $false
@@ -342,6 +342,7 @@ foreach ($db in $databases) {
     ##dropandCreate schema
     if ($scriptDropAndCreate.IsPresent -eq $true -and $SchemaOnly.IsPresent -eq $true) {
         if ($useDatabase.IsPresent) { "USE [$($db.Name)]`nGO" | Add-Content $temppath }
+        ForEach-Object { $db.Tables | ForEach-Object {  $_.Triggers | ForEach-Object {  $scripter = GetScript -ScriptDrops:$true ; $ss = $scripter.EnumScript($_); $ss | ForEach-Object { $_ + "`nGO" } | Add-Content $temppath } } } 
         $IncludeTypes  | ForEach-Object { $db.$_ | ForEach-Object { if ($ExcludeSchemas -notcontains $_.Schema) { $scripter = GetScript -ScriptDrops:$true ; $ss = $scripter.EnumScript($_); $ss + "GO" | Add-Content $temppath } } } 
         if ($useDatabase.IsPresent) { "USE [master]`nGO" | Add-Content $temppath }
         $scripter = GetScript -ScriptDrops:$true 
@@ -351,7 +352,8 @@ foreach ($db in $databases) {
         $ss = $scripter.EnumScript($db)
         $ss | ForEach-Object { $AlterCOMPATIBILITY_LEVEL = ""; if ($_ -match "FULLTEXTSERVICEPROPERTY") { $AlterCOMPATIBILITY_LEVEL = "ALTER DATABASE [$($db.Name)] SET COMPATIBILITY_LEVEL = 110`nGO`n" } if ($_ -notmatch "READ_WRITE") { $AlterCOMPATIBILITY_LEVEL + $_ + "`nGO" }else { $AlterReadWrite = $_ } } | Add-Content $temppath
         if ($useDatabase.IsPresent) { "USE [$($db.Name)]`nGO" | Add-Content $temppath }
-        $IncludeTypes | ForEach-Object { $db.$_ | ForEach-Object { if ($ExcludeSchemas -notcontains $_.Schema) { $scripter = GetScript; $ss = $scripter.EnumScript($_); $ss + "GO" | Add-Content $temppath } } } 
+        $IncludeTypes | ForEach-Object { $db.$_ | ForEach-Object { if ($ExcludeSchemas -notcontains $_.Schema) { $scripter = GetScript -Triggers:$false; $ss = $scripter.EnumScript($_); $ss + "GO" | Add-Content $temppath } } } 
+        ForEach-Object { $db.Tables | ForEach-Object {  $_.Triggers | ForEach-Object {  $scripter = GetScript ; $ss = $scripter.EnumScript($_); $ss | ForEach-Object { $_ + "`nGO" } | Add-Content $temppath } } } 
         if ($useDatabase.IsPresent) { "USE [master]`nGO" | Add-Content $temppath }
         $AlterReadWrite + "`nGO`n" |  Add-Content $temppath
 
@@ -380,14 +382,16 @@ foreach ($db in $databases) {
         $ss = $scripter.EnumScript($db)
         $ss | ForEach-Object { $AlterCOMPATIBILITY_LEVEL = ""; if ($_ -match "FULLTEXTSERVICEPROPERTY") { $AlterCOMPATIBILITY_LEVEL = "ALTER DATABASE [$($db.Name)] SET COMPATIBILITY_LEVEL = 110`nGO`n" } if ($_ -notmatch "READ_WRITE") { $AlterCOMPATIBILITY_LEVEL + $_ + "`nGO" }else { $AlterReadWrite = $_ } } | Add-Content $temppath
         if ($useDatabase.IsPresent) { "USE [$($db.Name)]`nGO" | Add-Content $temppath }
-        $IncludeTypes | ForEach-Object { $db.$_ | ForEach-Object { if ($ExcludeSchemas -notcontains $_.Schema) { $scripter = GetScript; $ss = $scripter.EnumScript($_); $ss + "GO" | Add-Content $temppath } } } 
+        $IncludeTypes | ForEach-Object { $db.$_ | ForEach-Object { if ($ExcludeSchemas -notcontains $_.Schema) { $scripter = GetScript -Triggers:$false; $ss = $scripter.EnumScript($_); $ss + "GO" | Add-Content $temppath } } } 
         ForEach-Object { $db.Tables | ForEach-Object { if ($ExcludeSchemas -notcontains $_.Schema) { $scripter = GetScript -ScriptData:$true -ScriptSchema:$false; $ss = $scripter.EnumScript($_); $ss | ForEach-Object { $_ + "`nGO" } | Add-Content $temppath } } } 
+        ForEach-Object { $db.Tables | ForEach-Object {  $_.Triggers | ForEach-Object {  $scripter = GetScript ; $ss = $scripter.EnumScript($_); $ss | ForEach-Object { $_ + "`nGO" } | Add-Content $temppath } } } 
         if ($useDatabase.IsPresent) { "USE [master]`nGO" | Add-Content $temppath }
         $AlterReadWrite + "`nGO`n" |  Add-Content $temppath
     }
     ##drop schemaanddata
     if ($scriptDrop.IsPresent -eq $true -and $SchemaAndData.IsPresent -eq $true) {
         if ($useDatabase.IsPresent) { "USE [$($db.Name)]`nGO" | Add-Content $temppath }
+        ForEach-Object { $db.Tables | ForEach-Object {  $_.Triggers | ForEach-Object {  $scripter = GetScript -ScriptDrops:$true ; $ss = $scripter.EnumScript($_); $ss | ForEach-Object { $_ + "`nGO" } | Add-Content $temppath } } } 
         $IncludeTypes  | ForEach-Object { $db.$_ | ForEach-Object { if ($ExcludeSchemas -notcontains $_.Schema) { $scripter = GetScript -ScriptDrops:$true ; $ss = $scripter.EnumScript($_); $ss + "GO" | Add-Content $temppath } } } 
         if ($useDatabase.IsPresent) { "USE [master]`nGO" | Add-Content $temppath }
         $scripter = GetScript -ScriptDrops:$true 
@@ -397,6 +401,7 @@ foreach ($db in $databases) {
     ##dropandcreate schemaanddata
     if ($scriptDropAndCreate.IsPresent -eq $true -and $SchemaAndData.IsPresent -eq $true) {
         if ($useDatabase.IsPresent) { "USE [$($db.Name)]`nGO" | Add-Content $temppath }
+        ForEach-Object { $db.Tables | ForEach-Object {  $_.Triggers | ForEach-Object {  $scripter = GetScript -ScriptDrops:$true ; $ss = $scripter.EnumScript($_); $ss | ForEach-Object { $_ + "`nGO" } | Add-Content $temppath } } } 
         $IncludeTypes  | ForEach-Object { $db.$_ | ForEach-Object { if ($ExcludeSchemas -notcontains $_.Schema) { $scripter = GetScript -ScriptDrops:$true ; $ss = $scripter.EnumScript($_); $ss + "GO" | Add-Content $temppath } } } 
         if ($useDatabase.IsPresent) { "USE [master]`nGO" | Add-Content $temppath }
         $scripter = GetScript -ScriptDrops:$true 
@@ -407,9 +412,10 @@ foreach ($db in $databases) {
         $ss = $scripter.EnumScript($db)
         $ss | ForEach-Object { $AlterCOMPATIBILITY_LEVEL = ""; if ($_ -match "FULLTEXTSERVICEPROPERTY") { $AlterCOMPATIBILITY_LEVEL = "ALTER DATABASE [$($db.Name)] SET COMPATIBILITY_LEVEL = 110`nGO`n" } if ($_ -notmatch "READ_WRITE") { $AlterCOMPATIBILITY_LEVEL + $_ + "`nGO" }else { $AlterReadWrite = $_ } } | Add-Content $temppath
         if ($useDatabase.IsPresent) { "USE [$($db.Name)]`nGO" | Add-Content $temppath }
-        $IncludeTypes | ForEach-Object { $db.$_ | ForEach-Object { if ($ExcludeSchemas -notcontains $_.Schema) { $scripter = GetScript; $ss = $scripter.EnumScript($_); $ss + "GO" | Add-Content $temppath } } } 
+        $IncludeTypes | ForEach-Object { $db.$_ | ForEach-Object { if ($ExcludeSchemas -notcontains $_.Schema) { $scripter = GetScript -Triggers:$false ; $ss = $scripter.EnumScript($_); $ss + "GO" | Add-Content $temppath } } } 
 
-        ForEach-Object { $db.Tables | ForEach-Object { if ($ExcludeSchemas -notcontains $_.Schema) { $scripter = GetScript -ScriptData:$true -ScriptSchema:$false; $ss = $scripter.EnumScript($_); $ss | ForEach-Object { $_ + "`nGO" } | Add-Content $temppath } } } 
+        ForEach-Object { $db.Tables | ForEach-Object { if ($ExcludeSchemas -notcontains $_.Schema) { $scripter = GetScript -ScriptData:$true -ScriptSchema:$false; $ss = $scripter.EnumScript($_); $ss | ForEach-Object { $_ + "`nGO" } | Add-Content $temppath } } }         
+        ForEach-Object { $db.Tables | ForEach-Object {  $_.Triggers | ForEach-Object {  $scripter = GetScript ; $ss = $scripter.EnumScript($_); $ss | ForEach-Object { $_ + "`nGO" } | Add-Content $temppath } } } 
         if ($useDatabase.IsPresent) { "USE [master]`nGO" | Add-Content $temppath }
         $AlterReadWrite + "`nGO`n" |  Add-Content $temppath
     }   
